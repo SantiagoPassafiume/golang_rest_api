@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/SantiagoPassafiume/golang_rest_api/db"
+	"log"
 	"time"
 )
 
@@ -120,4 +121,41 @@ func (e *Event) Delete() error {
 
 	return nil
 
+}
+
+func (e *Event) Register(userId int64) error {
+	query := `
+	INSERT INTO registrations (event_id, user_id)
+	VALUES (?, ?)
+	`
+
+	stmt, err := db.DB.Prepare(query)
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+
+	_, err = stmt.Exec(&e.ID, &e.UserID)
+
+	return err
+}
+
+func (e *Event) CancelRegistration(userId int64) error {
+	query := `
+	DELETE FROM registrations WHERE event_id = ? AND user_id = ?
+	`
+
+	stmt, err := db.DB.Prepare(query)
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+
+	result, err := stmt.Exec(&e.ID, userId)
+
+	log.Println(result.RowsAffected())
+
+	return err
 }

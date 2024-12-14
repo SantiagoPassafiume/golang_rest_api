@@ -3,7 +3,6 @@ package routes
 import (
 	"fmt"
 	"github.com/SantiagoPassafiume/golang_rest_api/models"
-	"github.com/SantiagoPassafiume/golang_rest_api/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -36,28 +35,16 @@ func getEvent(ctx *gin.Context) {
 }
 
 func createEvent(ctx *gin.Context) {
-	token := ctx.Request.Header.Get("Authorization")
-
-	if token == "" {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "Not authorized."})
-		return
-	}
-
-	userId, err := utils.VerifyToken(token)
-	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "Not authorized."})
-		return
-	}
 
 	var event models.Event
 
-	err = ctx.ShouldBindJSON(&event)
+	err := ctx.ShouldBindJSON(&event)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": "Could not parse request data."})
 		return
 	}
 
-	event.UserID = userId
+	event.UserID = ctx.GetInt64("userId")
 
 	err = event.Save()
 	fmt.Println(err)
@@ -76,9 +63,16 @@ func updateEvent(ctx *gin.Context) {
 		return
 	}
 
-	_, err = models.GetEventByID(eventId)
+	event, err := models.GetEventByID(eventId)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "Could not fetch the event."})
+		return
+	}
+
+	userId := ctx.GetInt64("userId")
+
+	if userId != event.UserID {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "Not authorized to update event."})
 		return
 	}
 
@@ -112,6 +106,13 @@ func deleteEvent(ctx *gin.Context) {
 	event, err := models.GetEventByID(eventId)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "Could not fetch the event."})
+		return
+	}
+
+	userId := ctx.GetInt64("userId")
+
+	if userId != event.UserID {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "Not authorized to delete event."})
 		return
 	}
 
